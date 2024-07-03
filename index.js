@@ -89,7 +89,7 @@ module.exports = async (opts) => {
 
   ow(output, ow.string.nonEmpty, 'output')
   ow(deviceScaleFactor, ow.number.integer.positive, 'deviceScaleFactor')
-  ow(renderer, ow.string.oneOf([ 'svg', 'canvas', 'html' ], 'renderer'))
+  ow(renderer, ow.string.oneOf(['svg', 'canvas', 'html'], 'renderer'))
   ow(rendererSettings, ow.object.plain, 'rendererSettings')
   ow(puppeteerOptions, ow.object.plain, 'puppeteerOptions')
   ow(ffmpegOptions, ow.object.exactShape({
@@ -117,10 +117,11 @@ module.exports = async (opts) => {
   const isGif = (ext === 'gif')
   const isMp4 = (ext === 'mp4')
   const isWebM = (ext === 'webm')
+  const isMov = (ext === 'mov')
   const isPng = (ext === 'png')
   const isJpg = (ext === 'jpg' || ext === 'jpeg')
 
-  if (!(isApng || isGif || isMp4 || isPng || isJpg || isWebM)) {
+  if (!(isApng || isGif || isMp4 || isPng || isJpg || isWebM || isMov)) {
     throw new Error(`Unsupported output format "${output}"`)
   }
 
@@ -129,7 +130,7 @@ module.exports = async (opts) => {
     ? path.join(tempDir, 'frame-%012d.png')
     : output
   const frameType = (isJpg ? 'jpeg' : 'png')
-  const isMultiFrame = isApng || isMp4 || isWebM || /%d|%\d{2,3}d/.test(tempOutput)
+  const isMultiFrame = isApng || isMp4 || isWebM || isMov || /%d|%\d{2,3}d/.test(tempOutput)
 
   let lottieData = animationData
 
@@ -283,7 +284,7 @@ ${inject.body || ''}
   let ffmpeg
   let ffmpegStdin
 
-  if (isApng || isMp4 || isWebM) {
+  if (isApng || isMp4 || isWebM || isMov) {
     ffmpegP = new Promise((resolve, reject) => {
       const ffmpegArgs = [
         '-v', 'error',
@@ -346,6 +347,27 @@ ${inject.body || ''}
         )
       }
 
+      if (isMov) {
+        let scale = `scale=${width}:-2`
+
+        if (width % 2 !== 0) {
+          if (height % 2 === 0) {
+            scale = `scale=-2:${height}`
+          } else {
+            scale = `scale=${width + 1}:-2`
+          }
+        }
+
+        ffmpegArgs.push(
+          '-f', 'image2pipe', '-framerate', `${fps}`, '-i', '-',
+          '-filter_complex', `[0:v]${scale}:flags=bicubic[out]`,
+          '-map', '[out]',
+          '-c:v', 'prores_ks',
+          '-pix_fmt', 'yuva420p',
+          '-r', fps
+        )
+      }
+
       ffmpegArgs.push(
         '-frames:v', `${numOutputFrames}`,
         '-an', output
@@ -387,11 +409,11 @@ ${inject.body || ''}
     // eslint-disable-next-line no-undef
     await page.evaluate((frame) => animation.goToAndStop(frame, true), frame)
     const screenshot = await rootHandle.screenshot({
-      path: (isApng || isMp4 || isWebM) ? undefined : frameOutputPath,
+      path: (isApng || isMp4 || isWebM || isMov) ? undefined : frameOutputPath,
       ...screenshotOpts
     })
 
-    if(progress) {
+    if (progress) {
       progress(frame, numFrames)
     }
 
@@ -400,7 +422,7 @@ ${inject.body || ''}
       break
     }
 
-    if (isApng || isMp4 || isWebM) {
+    if (isApng || isMp4 || isWebM || isMov) {
       if (ffmpegStdin.writable) {
         ffmpegStdin.write(screenshot)
       }
@@ -418,18 +440,22 @@ ${inject.body || ''}
     spinnerR.succeed()
   }
 
-  if (isApng || isMp4 || isWebM) {
+  if (isApng || isMp4 || isWebM || isMov) {
     let genType
     if (isApng) {
-      genType = "animated png"
+      genType = 'animated png'
     }
 
     if (isMp4) {
-      genType = "mp4"
+      genType = 'mp4'
     }
 
     if (isWebM) {
-      genType = "webm"
+      genType = 'webm'
+    }
+
+    if (isMov) {
+      genType = 'mov'
     }
 
     const spinnerF = !quiet && ora(`Generating ${genType} with FFmpeg`).start()
