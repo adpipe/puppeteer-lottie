@@ -339,7 +339,7 @@ ${inject.body || ''}
 
         ffmpegArgs.push(
           '-f', 'image2pipe', '-framerate', `${fps}`, '-i', '-',
-          '-filter_complex', `[0:v]${scale}:flags=bicubic[out]`,
+          '-filter_complex', `[0:v]${scale}:flags=lanczos[out]`,
           '-map', '[out]',
           '-c:v', 'libvpx-vp9',
           '-pix_fmt', 'yuva420p',
@@ -360,7 +360,7 @@ ${inject.body || ''}
 
         ffmpegArgs.push(
           '-f', 'image2pipe', '-framerate', `${fps}`, '-i', '-',
-          '-filter_complex', `[0:v]${scale}:flags=bicubic[out]`,
+          '-filter_complex', `[0:v]${scale}:flags=lanczos[out]`,
           '-map', '[out]',
           '-c:v', 'prores_ks',
           '-pix_fmt', 'yuva420p',
