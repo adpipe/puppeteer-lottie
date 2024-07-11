@@ -107,3 +107,49 @@ test('bodymovin.json => mp4', async (t) => {
 
   await fs.remove(output)
 })
+
+test('bodymovin.json => webm', async (t) => {
+  const output = tempy.file({ extension: 'webm' })
+
+  await renderLottie({
+    path: bodymovin,
+    quiet: true,
+    ffmpegOptions: {
+      crf: 22,
+      profileVideo: 'high',
+      preset: 'fast'
+    },
+    output
+  })
+
+  const probe = await ffmpegProbe(output)
+  // height is scaled up a bit because h264 encoder requires an even height
+  t.is(probe.width, 1820)
+  t.is(probe.height, 276)
+  t.is(probe.streams[0].profile, 'Profile 0')
+
+  await fs.remove(output)
+})
+
+test('bodymovin.json => mov', async (t) => {
+  const output = tempy.file({ extension: 'mov' })
+
+  await renderLottie({
+    path: bodymovin,
+    quiet: true,
+    ffmpegOptions: {
+      crf: 22,
+      profileVideo: 'high',
+      preset: 'fast'
+    },
+    output
+  })
+
+  const probe = await ffmpegProbe(output)
+  // height is scaled up a bit because h264 encoder requires an even height
+  t.is(probe.width, 1820)
+  t.is(probe.height, 276)
+  t.is(probe.streams[0].profile, '4444')
+
+  await fs.remove(output)
+})
