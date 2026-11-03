@@ -1,17 +1,19 @@
 'use strict'
 
 const fs = require('fs-extra')
-const execa = require('execa')
 const ora = require('ora')
 const ow = require('ow')
 const path = require('path')
 const pluralize = require('pluralize')
 const puppeteer = require('puppeteer')
 const tempy = require('tempy')
-const { spawn } = require('child_process')
+const { exec, spawn } = require('child_process')
+const { promisify } = require('util')
 const { sprintf } = require('sprintf-js')
 
 const { cssifyObject } = require('css-in-js-utils')
+
+const execAsync = promisify(exec)
 
 const lottieScript = fs.readFileSync(require.resolve('lottie-web/build/player/lottie.min'), 'utf8')
 
@@ -484,7 +486,7 @@ ${inject.body || ''}
     const executable = process.env.GIFSKI_PATH || 'gifski'
     const cmd = [ executable ].concat(params).join(' ')
 
-    await execa.shell(cmd)
+    await execAsync(cmd)
 
     if (spinnerG) {
       spinnerG.succeed()
